@@ -63,13 +63,11 @@ struct PCB *select_next_process() {
 }
 
 void execute_process(struct PCB *process) {
-    
     time_t current_time = time(NULL);
     double elapsed_time = difftime(current_time, start_time);
 
     printf("\n - Current Time: %.0f seconds since start\n\n", elapsed_time);
     printf("Executing process with PID %d, Burst Time: %d\n", process->pid, process->burst_time);
-
 
     sleep(process->burst_time);
     printf("Process with PID %d finished execution.\n", process->pid);
@@ -81,7 +79,6 @@ void execute_process(struct PCB *process) {
     process->turnaround_time = process->completion_time - process->arrival_time;
     process->waiting_time = process->turnaround_time - process->burst_time;
 
-    // Instead of freeing the PCB, we add it to the completed list
     pthread_mutex_lock(&ready_queue_mutex);
     process->next = completed_processes;
     completed_processes = process;
@@ -98,19 +95,16 @@ void* scheduler(void *args) {
                 printf("No processes in the queue and no process is running.\n");
                 break;
             }
-            continue;  // Keep the scheduler running if a process is still running
+            continue;
         }
         
         struct PCB *highest_priority_process = (struct PCB *)ready_queue;
         if (currently_running_process == NULL || ((struct PrioritizedPCB *)highest_priority_process)->priority < ((struct PrioritizedPCB *)currently_running_process)->priority) {
-            // Preempt the current process if necessary
             if (currently_running_process != NULL) {
-                // Simulate preemption by re-adding the preempted process back to the ready queue
                 printf("Preempting Process %d with Process %d\n", currently_running_process->pid, highest_priority_process->pid);
                 currently_running_process->next = ready_queue;
                 ready_queue = currently_running_process;
             }
-            // Select the highest priority process to run next
             ready_queue = ready_queue->next;
             highest_priority_process->next = NULL;
             currently_running_process = highest_priority_process;
@@ -118,7 +112,7 @@ void* scheduler(void *args) {
         pthread_mutex_unlock(&ready_queue_mutex);
 
         if (currently_running_process != NULL) {
-            execute_process(currently_running_process);  // Execute the selected or continuing process
+            execute_process(currently_running_process);
             currently_running_process = NULL;
         }
     }
@@ -147,21 +141,17 @@ void display_statistics() {
     }
 }
 
-
 void FCFS(int numberOfProcesses, int maxBurstTime) {
     pthread_t scheduler_thread;
     pthread_create(&scheduler_thread, NULL, scheduler, NULL);
 
-    // Simulate processes (creating PCBs and adding them to the ready queue)
     for (int i = 1; i <= numberOfProcesses; ++i) {
         struct PCB *new_process = (struct PCB*)malloc(sizeof(struct PCB));
         new_process->pid = i;
-        new_process->burst_time = 1 + rand() % maxBurstTime; // Random burst time between 1 and 5
-
+        new_process->burst_time = 1 + rand() % maxBurstTime;
         time_t current_time = time(NULL);
         double elapsed_time = difftime(current_time, start_time);
-
-        new_process->arrival_time = elapsed_time; // Random arrival time between 0 and 9
+        new_process->arrival_time = elapsed_time;
         strcpy(new_process->state, "Ready");
         new_process->next = NULL;
         add_process(new_process);
@@ -174,20 +164,16 @@ void SJF(int numberOfProcesses, int maxBurstTime) {
     pthread_t scheduler_thread;
     pthread_create(&scheduler_thread, NULL, scheduler, NULL);
 
-    // Simulate processes (creating PCBs and adding them to the ready queue)
     for (int i = 1; i <= numberOfProcesses; ++i) {
         struct PCB *new_process = (struct PCB*)malloc(sizeof(struct PCB));
         new_process->pid = i;
-        new_process->burst_time = 1 + rand() % maxBurstTime; // Random burst time between 1 and 5
-
+        new_process->burst_time = 1 + rand() % maxBurstTime;
         time_t current_time = time(NULL);
         double elapsed_time = difftime(current_time, start_time);
-
-        new_process->arrival_time = elapsed_time; // Random arrival time between 0 and 9
+        new_process->arrival_time = elapsed_time;
         strcpy(new_process->state, "Ready");
         new_process->next = NULL;
         
-        // Insert process in the ready queue based on burst time (SJF)
         pthread_mutex_lock(&ready_queue_mutex);
         if (ready_queue == NULL || new_process->burst_time < ready_queue->burst_time) {
             new_process->next = ready_queue;
@@ -210,21 +196,17 @@ void priorityPreemptive(int numberOfProcesses, int maxBurstTime) {
     pthread_t scheduler_thread;
     pthread_create(&scheduler_thread, NULL, scheduler, NULL);
 
-    // Simulate processes (creating PCBs and adding them to the ready queue)
     for (int i = 1; i <= numberOfProcesses; ++i) {
         struct PrioritizedPCB *new_process = (struct PrioritizedPCB*)malloc(sizeof(struct PrioritizedPCB));
         new_process->pid = i;
-        new_process->burst_time = 1 + rand() % maxBurstTime; // Random burst time between 1 and 5
-
+        new_process->burst_time = 1 + rand() % maxBurstTime;
         time_t current_time = time(NULL);
         double elapsed_time = difftime(current_time, start_time);
-
-        new_process->arrival_time = elapsed_time; // Random arrival time between 0 and 9
-        new_process->priority = rand() % 10; // Random priority between 0 and 9
+        new_process->arrival_time = elapsed_time;
+        new_process->priority = rand() % 10;
         strcpy(new_process->state, "Ready");
         new_process->next = NULL;
         
-        // Insert process in the ready queue based on priority (preemptive)
         pthread_mutex_lock(&ready_queue_mutex);
         if (ready_queue == NULL || new_process->priority < ((struct PrioritizedPCB *)ready_queue)->priority) {
             new_process->next = (struct PrioritizedPCB *)ready_queue;
